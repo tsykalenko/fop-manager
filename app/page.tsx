@@ -3,243 +3,247 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-// 1. Описуємо тип однієї транзакції (як вона лежить в базі)
-type Transaction = {
+type TradeItem = {
   id: number;
-  created_at: string;
-  title: string;
-  type: "income" | "expense";
-  amount: number;
-  payment_method: string;
-};
-
-// 2. Описуємо тип для ГРУПИ (День + список транзакцій + підсумки)
-type DayGroup = {
   date: string;
-  transactions: Transaction[];
-  totalIncome: number;
-  totalExpense: number;
+  title: string;
+  income: number;
+  expense: number;
+  writeoff: number;
+  payment_method: string;
+  status: "paid" | "unpaid"; // Статус оплати
 };
 
 export default function Home() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<TradeItem[]>([]);
+  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Стейт для форми
-  const [newTitle, setNewTitle] = useState("");
-  const [newAmount, setNewAmount] = useState("");
-  const [newType, setNewType] = useState<"income" | "expense">("income");
-  const [paymentMethod, setPaymentMethod] = useState("Готівка");
+  // Поля форми
+  const [title, setTitle] = useState("");
+  const [income, setIncome] = useState("");
+  const [expense, setExpense] = useState("");
+  const [writeoff, setWriteoff] = useState("");
+  const [method, setMethod] = useState("Готівка");
+  const [status, setStatus] = useState<"paid" | "unpaid">("paid"); // Повернули статус
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  useEffect(() => { fetchItems(); }, [viewDate]);
 
-  async function fetchTransactions() {
-    setLoading(true);
-    const { data, error } = await supabase
+  async function fetchItems() {
+    const { data } = await supabase
       .from("transactions")
       .select("*")
-      .order("created_at", { ascending: false }); // Спочатку нові
-
-    if (error) console.error("Помилка:", error);
-    else setTransactions(data || []);
-    
-    setLoading(false);
+      .eq("date", viewDate)
+      .order("created_at", { ascending: false });
+      
+    if (data) setItems(data);
+    else setItems([]);
   }
 
-  // --- 🧠 МОЗОК: Функція групування ---
-  // Вона перетворює плоский список транзакцій на список груп по днях
-  const groupedTransactions: DayGroup[] = [];
-
-  transactions.forEach((t) => {
-    // Перетворюємо страшну дату "2023-12-30T14:00:00" на просту "30.12.2023"
-    const dateKey = new Date(t.created_at).toLocaleDateString("uk-UA");
-
-    // Шукаємо, чи є вже група для цієї дати
-    let group = groupedTransactions.find((g) => g.date === dateKey);
-
-    // Якщо групи немає — створюємо нову
-    if (!group) {
-      group = { date: dateKey, transactions: [], totalIncome: 0, totalExpense: 0 };
-      groupedTransactions.push(group);
-    }
-
-    // Додаємо транзакцію в групу
-    group.transactions.push(t);
-
-    // Рахуємо гроші в цій групі
-    if (t.type === "income") {
-      group.totalIncome += t.amount;
-    } else {
-      group.totalExpense += t.amount;
-    }
-  });
-  // ------------------------------------
+  const changeDate = (days: number) => {
+    const date = new Date(viewDate);
+    date.setDate(date.getDate() + days);
+    setViewDate(date.toISOString().split('T')[0]);
+  };
 
   const handleAdd = async () => {
-    if (!newTitle || !newAmount) return alert("Заповніть поля!");
+    if (!title) return alert("Введіть назву!");
 
     const { error } = await supabase.from("transactions").insert([
       {
-        title: newTitle,
-        amount: Number(newAmount),
-        type: newType,
-        payment_method: paymentMethod,
+        date: viewDate,
+        title: title,
+        income: Number(income) || 0,
+        expense: Number(expense) || 0,
+        writeoff: Number(writeoff) || 0,
+        payment_method: method,
+        status: status // Записуємо вибраний статус
       },
     ]);
 
     if (!error) {
-      setNewTitle("");
-      setNewAmount("");
-      fetchTransactions();
-    }
-  };
-
-  // Загальний баланс за весь час
-  const globalIncome = transactions
-    .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const globalExpense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-    
-// Функція видалення
-  const handleDelete = async (id: number) => {
-    // 1. Питаємо користувача, чи він певен (щоб не видалити випадково)
-    if (!confirm("Видалити цей запис?")) return;
-
-    // 2. Видаляємо з бази, де id співпадає
-    const { error } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", id); // .eq означає EQuals (дорівнює)
-
-    if (error) {
-      alert("Не вдалося видалити!");
-      console.error(error);
+      setTitle(""); setIncome(""); setExpense(""); setWriteoff("");
+      // Скидаємо статус на "Оплачено" після додавання, щоб не забути
+      setStatus("paid"); 
+      fetchItems();
     } else {
-      // 3. Оновлюємо список на екрані
-      fetchTransactions();
+      alert("Помилка!");
     }
   };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Видалити?")) return;
+    await supabase.from("transactions").delete().eq("id", id);
+    fetchItems();
+  };
+
+  // --- МАТЕМАТИКА ---
+  const sumIncome = items.reduce((acc, item) => acc + item.income, 0);
+  
+  // 🔥 ВАЖЛИВО: Рахуємо витрати, тільки якщо статус "paid"
+  const sumExpense = items.reduce((acc, item) => {
+    if (item.status === 'unpaid') return acc; // Якщо борг - пропускаємо
+    return acc + item.expense;
+  }, 0);
+
+  const sumWriteoff = items.reduce((acc, item) => acc + item.writeoff, 0);
+  
+  // Чистий прибуток
+  const dayProfit = sumIncome - sumExpense - sumWriteoff;
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-28">
-      {/* Шапка */}
-      <header className="bg-white shadow-sm p-4 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blue-700">Мій ФОП</h1>
-          <div className="text-sm font-mono bg-blue-50 px-2 py-1 rounded text-blue-800">
-             Баланс: {globalIncome - globalExpense} ₴
-          </div>
+    <div className="min-h-screen bg-gray-50 pb-32 font-sans">
+      
+      {/* --- НАВІГАЦІЯ --- */}
+      <header className="bg-blue-700 text-white sticky top-0 z-20 shadow-md">
+        <div className="p-4 flex justify-between items-center">
+             <button onClick={() => changeDate(-1)} className="text-2xl font-bold px-4 active:opacity-50">‹</button>
+             <div className="flex flex-col items-center">
+                <input 
+                    type="date" 
+                    value={viewDate} 
+                    onChange={(e) => setViewDate(e.target.value)}
+                    className="bg-transparent text-white font-bold text-lg text-center outline-none cursor-pointer"
+                />
+                <span className="text-[10px] opacity-80 uppercase tracking-widest">Обраний день</span>
+             </div>
+             <button onClick={() => changeDate(1)} className="text-2xl font-bold px-4 active:opacity-50">›</button>
+        </div>
+        <div className="bg-blue-800 p-2 flex justify-between px-6 text-sm">
+            <span className="opacity-80">Чистий прибуток (по касі):</span>
+            <span className="font-bold text-lg">{dayProfit} ₴</span>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto mt-4 p-4 space-y-6">
+      <main className="p-3 max-w-3xl mx-auto space-y-6 mt-2">
         
-        {/* Форма додавання */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="Що продали/купили?"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="border p-2 rounded-lg w-full"
-            />
-            <input
-              type="number"
-              placeholder="Сума"
-              value={newAmount}
-              onChange={(e) => setNewAmount(e.target.value)}
-              className="border p-2 rounded-lg w-24"
-            />
+        {/* --- ФОРМА --- */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100 space-y-3">
+          <div className="text-center text-xs text-gray-400 font-bold uppercase mb-2">
+            Додати запис за {viewDate}
           </div>
-          <div className="flex gap-2">
-            <select
-              value={newType}
-              onChange={(e) => setNewType(e.target.value as any)}
-              className="border p-2 rounded-lg flex-1 bg-gray-50"
-            >
-              <option value="income">🟢 Дохід</option>
-              <option value="expense">🔴 Витрата</option>
-            </select>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="border p-2 rounded-lg flex-1 bg-gray-50"
-            >
-              <option value="Готівка">💵 Готівка</option>
-              <option value="Картка">💳 Картка</option>
-            </select>
+          <input type="text" placeholder="Товар (напр. Хліб)" value={title} onChange={e => setTitle(e.target.value)} className="w-full border-b border-gray-300 py-2 font-medium outline-none placeholder-gray-400" />
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] font-bold text-green-600 uppercase">Дохід</label>
+              <input type="number" placeholder="0" value={income} onChange={e => setIncome(e.target.value)} className="w-full bg-green-50 rounded px-2 py-2 font-bold text-gray-700 outline-none focus:ring-1 focus:ring-green-500" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-red-600 uppercase">Витрата</label>
+              <input type="number" placeholder="0" value={expense} onChange={e => setExpense(e.target.value)} className="w-full bg-red-50 rounded px-2 py-2 font-bold text-gray-700 outline-none focus:ring-1 focus:ring-red-500" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Спис.</label>
+              <input type="number" placeholder="0" value={writeoff} onChange={e => setWriteoff(e.target.value)} className="w-full bg-gray-100 rounded px-2 py-2 font-bold text-gray-700 outline-none focus:ring-1 focus:ring-gray-500" />
+            </div>
           </div>
-          <button
-            onClick={handleAdd}
-            className="w-full mt-3 bg-black text-white py-3 rounded-lg font-bold active:scale-95 transition"
-          >
-            Додати запис
-          </button>
+
+          <div className="flex gap-2 items-center pt-2">
+             <select value={method} onChange={e => setMethod(e.target.value)} className="bg-gray-50 text-xs p-2 rounded border flex-1">
+                <option>💵 Готівка</option>
+                <option>💳 Картка</option>
+             </select>
+             
+             {/* 👇 ПОВЕРНУЛИ ВИБІР СТАТУСУ */}
+             <select 
+                value={status} 
+                onChange={e => setStatus(e.target.value as any)} 
+                className={`text-xs p-2 rounded border flex-1 font-bold ${status === 'unpaid' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-gray-50'}`}
+             >
+                <option value="paid">✅ Оплачено</option>
+                <option value="unpaid">⏳ Борг</option>
+             </select>
+
+             <button onClick={handleAdd} className="flex-[2] bg-black text-white py-3 rounded-lg font-bold text-sm shadow active:scale-95 transition">
+               + Зберегти
+             </button>
+          </div>
         </div>
 
-        {/* СПИСОК ПО ДНЯХ */}
-        <div className="space-y-6">
-          {groupedTransactions.map((group) => (
-            <div key={group.date} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-              
-              {/* Заголовок Дня (Дата + Підсумки) */}
-              <div className="bg-gray-100 p-3 flex justify-between items-center border-b border-gray-200">
-                <span className="font-bold text-gray-700">{group.date}</span>
-                <div className="text-xs space-x-2">
-                  <span className="text-green-600 font-bold">+{group.totalIncome}</span>
-                  <span className="text-red-500 font-bold">-{group.totalExpense}</span>
-                </div>
-              </div>
+        {/* --- ТАБЛИЦЯ --- */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="grid grid-cols-[3fr_2fr_2fr_2fr_1fr] bg-gray-100 p-2 text-[10px] font-bold text-gray-500 uppercase border-b text-center">
+            <div className="text-left pl-2">Товар</div>
+            <div className="text-green-600">Дохід</div>
+            <div className="text-red-500">Витрата</div>
+            <div className="text-gray-500">Спис.</div>
+            <div></div>
+          </div>
 
-              {/* Список транзакцій цього дня */}
-              <div className="divide-y divide-gray-100">
-                {group.transactions.map((t) => (
-                  <div key={t.id} className="p-3 flex justify-between items-center hover:bg-gray-50 group">
-                    {/* Ліва частина: Назва + Метод */}
-                    <div className="flex items-center gap-3">
-                      {/* КНОПКА ВИДАЛЕННЯ (З'являється червоний хрестик) */}
-                      <button 
-                        onClick={() => handleDelete(t.id)}
-                        className="text-gray-300 hover:text-red-500 transition px-2 py-1 text-xl font-bold"
-                        title="Видалити"
-                      >
-                        ×
-                      </button>
-                      
-                      <div>
-                        <div className="font-medium text-gray-800">{t.title}</div>
-                        <div className="text-xs text-gray-400">{t.payment_method}</div>
-                      </div>
+          <div className="divide-y divide-gray-100">
+            {items.map((item) => {
+                // Розрахунок націнки
+                let markupText = "";
+                let markupColor = "bg-gray-100 text-gray-500";
+                if (item.expense > 0) {
+                    const val = (item.income - item.writeoff) / item.expense;
+                    if (val >= 1) markupColor = "bg-green-50 text-green-700";
+                    else markupColor = "bg-red-50 text-red-700";
+                    markupText = val.toFixed(2).replace('.', ',') + '%';
+                }
+
+                // 🔥 Визначаємо стиль для витрати (Блідий якщо не оплачено)
+                const isUnpaid = item.status === 'unpaid';
+                const expenseStyle = isUnpaid 
+                    ? "font-bold text-red-200 text-center flex items-center justify-center gap-1" // Блідий + іконка
+                    : "font-bold text-red-500 text-center"; // Звичайний
+
+                return (
+                  <div key={item.id} className="grid grid-cols-[3fr_2fr_2fr_2fr_1fr] p-3 text-sm items-center">
+                    <div className="font-medium text-gray-800 leading-tight text-left pl-2 overflow-hidden">
+                      <div className="text-ellipsis whitespace-nowrap">{item.title}</div>
+                      {markupText && (
+                          <span className={`text-[10px] px-1.5 rounded font-bold inline-block mt-1 ${markupColor}`}>
+                              x{markupText}
+                          </span>
+                      )}
+                    </div>
+                    
+                    <div className="font-bold text-green-600 text-center">{item.income > 0 ? item.income : "-"}</div>
+                    
+                    {/* 👇 ВИТРАТА З УРАХУВАННЯМ БОРГУ */}
+                    <div className={expenseStyle}>
+                        {isUnpaid && <span className="text-[10px]">⏳</span>}
+                        {item.expense > 0 ? item.expense : "-"}
                     </div>
 
-                    {/* Права частина: Сума */}
-                    <span className={`font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                      {t.type === 'income' ? '+' : '-'} {t.amount}
-                    </span>
+                    <div className="font-bold text-gray-500 text-center bg-gray-50 rounded py-1 mx-1">
+                        {item.writeoff > 0 ? item.writeoff : "-"}
+                    </div>
+                    <div className="text-center">
+                      <button onClick={() => handleDelete(item.id)} className="text-gray-300 hover:text-red-600 font-bold px-2">×</button>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+            })}
 
-              {/* Чистий прибуток за день */}
-              <div className="bg-gray-50 p-2 text-right text-xs text-gray-500 border-t">
-                Прибуток за день: 
-                <span className="font-bold ml-1 text-gray-800">
-                  {group.totalIncome - group.totalExpense} ₴
-                </span>
+            {items.length === 0 && (
+              <div className="p-8 text-center text-gray-400 text-sm">
+                Пусто.
               </div>
+            )}
+          </div>
+
+          {/* ПІДВАЛ */}
+          {items.length > 0 && (
+            <div className="grid grid-cols-[3fr_2fr_2fr_2fr_1fr] bg-gray-100 p-3 border-t-2 border-gray-200 text-sm items-center">
+                <div className="text-right pr-2 font-bold text-gray-600 text-xs uppercase">Разом:</div>
+                <div className="font-bold text-green-700 text-center text-base leading-none">
+                    {sumIncome} <span className="text-[10px] font-normal block text-green-600">грн</span>
+                </div>
+                
+                {/* Сума тільки оплачених витрат */}
+                <div className="font-bold text-red-700 text-center text-base leading-none">
+                    {sumExpense} <span className="text-[10px] font-normal block text-red-600">грн</span>
+                </div>
+
+                <div className="font-bold text-gray-700 text-center text-base leading-none">
+                    {sumWriteoff} <span className="text-[10px] font-normal block text-gray-500">грн</span>
+                </div>
+                <div></div>
             </div>
-          ))}
-
-          {!loading && groupedTransactions.length === 0 && (
-             <div className="text-center text-gray-400 py-10">Тут поки пусто</div>
           )}
         </div>
-
       </main>
     </div>
   );
