@@ -49,3 +49,20 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+// ... (тут твої GET, POST, DELETE) ...
+
+// 👇 НОВИЙ МЕТОД: PATCH (Оновлення)
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    await transactionService.update(id, updates);
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
