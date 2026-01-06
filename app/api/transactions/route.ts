@@ -1,68 +1,86 @@
 import { NextResponse } from "next/server";
-import { transactionService } from "@/lib/services/transactionService";
+import { supabase } from "@/lib/supabaseClient";
 
-// GET: Обробляє запит на отримання даних
 export async function GET(request: Request) {
-  try {
-    // Витягуємо дату з URL (наприклад ?date=2025-01-01)
-    const { searchParams } = new URL(request.url);
-    const date = searchParams.get("date");
+  const { searchParams } = new URL(request.url);
+  const date = searchParams.get("date");
+  const id = searchParams.get("id");
 
-    if (!date) {
-      return NextResponse.json({ error: "Date is required" }, { status: 400 });
-    }
+  let query = supabase
+    .from("transactions")
+    .select(`*, profiles ( full_name )`)
+    .order("created_at", { ascending: false });
 
-    // Викликаємо наш сервіс
-    const data = await transactionService.getByDate(date);
-    
-    return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (id) {
+    query = query.eq("id", id);
+  } else if (date) {
+    const startDate = `${date} 00:00:00`;
+    const endDate = `${date} 23:59:59`;
+    query = query.gte("created_at", startDate).lte("created_at", endDate);
   }
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
-// POST: Обробляє запит на створення
 export async function POST(request: Request) {
-  try {
-    const body = await request.json(); // Читаємо дані, які прислав фронтенд
-    
-    const result = await transactionService.create(body);
-    
-    return NextResponse.json({ success: true, data: result });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const body = await request.json();
+  const { data, error } = await supabase.from("transactions").insert([body]).select();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
-// DELETE: Обробляє видалення
 export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "No ID" }, { status: 400 });
 
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
-
-    await transactionService.delete(Number(id));
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }
-// ... (тут твої GET, POST, DELETE) ...
 
-// 👇 НОВИЙ МЕТОД: PATCH (Оновлення)
 export async function PATCH(request: Request) {
-  try {
-    const body = await request.json();
-    const { id, ...updates } = body;
+  const body = await request.json();
+  const { 
+    id, 
+    // Поля для редагування даних
+    title, income, expense, writeoff, payment_method, payment_status, 
+    // Поля для адміна/статусів
+    admin_check, admin_comment, seller_comment 
+  } = body; 
 
-    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+  const updates: any = {};
 
-    await transactionService.update(id, updates);
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // 1. ЛОГІКА АДМІНА (Статуси і коментарі)
+  if (admin_check !== undefined) {
+    updates.admin_check = admin_check;
+    if (admin_comment !== undefined) updates.admin_comment = admin_comment;
   }
+  if (seller_comment !== undefined) {
+    updates.seller_comment = seller_comment;
+  }
+
+  // 2. ЛОГІКА РЕДАГУВАННЯ ДАНИХ (Якщо змінюємо саму суть транзакції)
+  if (title !== undefined) updates.title = title;
+  if (income !== undefined) updates.income = income;
+  if (expense !== undefined) updates.expense = expense;
+  if (writeoff !== undefined) updates.writeoff = writeoff;
+  if (payment_method !== undefined) updates.payment_method = payment_method;
+  if (payment_status !== undefined) updates.payment_status = payment_status;
+
+  // 🚨 ВАЖЛИВО: Якщо змінилися фінансові дані, скидаємо статус на "pending" (щоб адмін перевірив знову)
+  if (income !== undefined || expense !== undefined || writeoff !== undefined || payment_status !== undefined) {
+      updates.admin_check = 'pending';
+  }
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(updates)
+    .eq("id", id)
+    .select();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
