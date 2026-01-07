@@ -154,11 +154,12 @@ export default function Home() {
     return <span className="mt-1 inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-gray-200">⏳ На перевірці</span>;
   };
 
-  const gridLayout = "grid-cols-[110px_3fr_1fr_1fr_1fr_70px]";
+  // Цей клас визначає сітку ТІЛЬКИ для комп'ютера (md:grid)
+  const desktopGrid = "md:grid md:grid-cols-[100px_3fr_1fr_1fr_1fr_60px]";
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32 font-sans text-gray-900">
-      <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 shadow-md mb-6 relative rounded-b-[2rem]">
+      <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 shadow-md mb-4 relative rounded-b-[2rem]">
         <div className="max-w-5xl mx-auto flex justify-center items-center px-4 gap-4 relative z-10">
             <button onClick={() => changeDate(-1)} className="text-2xl font-bold opacity-70 hover:opacity-100 transition p-1">‹</button>
             <div onClick={openCalendar} className="group flex flex-col items-center cursor-pointer bg-white/10 hover:bg-white/20 transition px-6 py-1 rounded-full border border-white/20 backdrop-blur-sm select-none min-w-[140px]">
@@ -170,9 +171,11 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 space-y-6">
+      <main className="max-w-5xl mx-auto px-2 md:px-4 space-y-4">
+        
+        {/* ФОРМА (Схована при редагуванні, щоб не заважати) */}
         {!editingId && (
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+            <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 space-y-3 md:space-y-4">
             <div className="flex bg-gray-100 p-1 rounded-lg">
                 <button onClick={() => setMode('trade')} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${mode === 'trade' ? 'bg-white shadow text-emerald-700' : 'text-gray-500'}`}>📦 Товар</button>
                 <button onClick={() => setMode('cash_drop')} className={`flex-1 py-2 rounded-md text-sm font-bold transition ${mode === 'cash_drop' ? 'bg-white shadow text-emerald-700' : 'text-gray-500'}`}>💰 Здача каси</button>
@@ -201,8 +204,11 @@ export default function Home() {
             </div>
         )}
 
+        {/* СПИСОК ТРАНЗАКЦІЙ */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-          <div className={`grid ${gridLayout} bg-gray-50 p-3 border-b text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center`}>
+          
+          {/* ЗАГОЛОВОК (Тільки на комп'ютері) */}
+          <div className={`hidden ${desktopGrid} bg-gray-50 p-3 border-b text-[10px] font-bold text-gray-500 uppercase tracking-wider items-center`}>
               <div className="text-center">Статус</div>
               <div className="pl-2">Опис</div>
               <div className="text-center text-emerald-600">Дохід</div>
@@ -221,9 +227,11 @@ export default function Home() {
                 if (isEditing) rowBg = "bg-blue-50 border-l-4 border-blue-500";
                 
                 return (
-                  <div key={item.id} className={`grid ${gridLayout} p-3 items-center text-sm ${rowBg}`}>
+                  <div key={item.id} className={`flex flex-col gap-3 p-4 md:gap-0 md:p-3 md:items-center text-sm ${desktopGrid} ${rowBg}`}>
                       
-                      <div className="flex justify-center">
+                      {/* 1. СТАТУС (На мобільному це окремий рядок зверху) */}
+                      <div className="flex justify-between items-center md:justify-center w-full">
+                          <div className="md:hidden font-bold text-gray-400 text-xs">Статус:</div>
                           {isEditing ? (
                               <span className="text-blue-600 font-bold text-xs animate-pulse">✏️ Ред...</span>
                           ) : (
@@ -235,21 +243,24 @@ export default function Home() {
                           )}
                       </div>
 
-                      <div className="pl-2 pr-2 relative group">
+                      {/* 2. ОПИС ТА РЕДАГУВАННЯ */}
+                      <div className="pl-0 md:pl-2 md:pr-2 relative w-full">
                           {isEditing ? (
-                              <div className="space-y-1">
+                              <div className="space-y-2 md:space-y-1">
+                                  {/* Інпут назви */}
                                   <input 
                                     type="text" 
                                     value={editFormData.title || ""} 
                                     onChange={e => setEditFormData({...editFormData, title: e.target.value})}
-                                    className="w-full border border-blue-300 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full border border-blue-300 rounded px-2 py-2 md:py-1 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Назва товару"
                                   />
-                                  {/* 👇 ТУТ ТЕПЕР МОЖНА ЗМІНИТИ І МЕТОД ОПЛАТИ */}
-                                  <div className="flex gap-1">
+                                  {/* Вибір оплати та статусу */}
+                                  <div className="flex gap-2">
                                     <select 
                                         value={editFormData.payment_method}
                                         onChange={e => setEditFormData({...editFormData, payment_method: e.target.value})}
-                                        className="text-xs border border-blue-300 rounded px-1 py-0.5"
+                                        className="flex-1 text-xs border border-blue-300 rounded px-2 py-1.5 md:py-0.5"
                                     >
                                         <option value="Готівка">💵 Готівка</option>
                                         <option value="Картка">💳 Картка</option>
@@ -257,7 +268,7 @@ export default function Home() {
                                     <select 
                                         value={editFormData.payment_status}
                                         onChange={e => setEditFormData({...editFormData, payment_status: e.target.value as any})}
-                                        className="text-xs border border-blue-300 rounded px-1 py-0.5"
+                                        className="flex-1 text-xs border border-blue-300 rounded px-2 py-1.5 md:py-0.5"
                                     >
                                         <option value="paid">✅ Оплачено</option>
                                         <option value="unpaid">⏳ Борг</option>
@@ -265,52 +276,66 @@ export default function Home() {
                                   </div>
                               </div>
                           ) : (
+                              // Відображення (не редагування)
                               <>
-                                <div className={`font-medium ${isCash ? 'text-blue-700 font-bold' : 'text-slate-800'}`}>
+                                <div className={`font-medium text-base md:text-sm ${isCash ? 'text-blue-700 font-bold' : 'text-slate-800'}`}>
                                     {item.title}
-                                    <button onClick={() => handleAddComment(item.id!, item.seller_comment)} className="ml-2 text-gray-300 hover:text-blue-500 transition" title="Додати коментар">💬</button>
+                                    <button onClick={() => handleAddComment(item.id!, item.seller_comment)} className="ml-2 text-gray-300 hover:text-blue-500 transition align-middle" title="Додати коментар">💬</button>
                                 </div>
-                                {item.payment_status === 'unpaid' && <span className="text-[10px] text-red-500 bg-red-100 px-1 rounded font-bold uppercase">БОРГ</span>}
-                                {item.admin_comment && <div className="mt-1 text-[11px] text-red-600 bg-red-50 p-1 rounded border border-red-100 font-medium">🛡 {item.admin_comment}</div>}
-                                {item.seller_comment && <div className="mt-1 text-[11px] text-blue-600 bg-blue-50 p-1 rounded border border-blue-100 font-medium">👤 {item.seller_comment}</div>}
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {item.payment_status === 'unpaid' && <span className="text-[10px] text-red-500 bg-red-100 px-1 rounded font-bold uppercase">БОРГ</span>}
+                                    {item.admin_comment && <div className="text-[11px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100 font-medium">🛡 {item.admin_comment}</div>}
+                                    {item.seller_comment && <div className="text-[11px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-medium">👤 {item.seller_comment}</div>}
+                                </div>
                               </>
                           )}
                       </div>
 
-                      <div className="text-center">
-                          {isEditing && !isCash ? (
-                             <input type="number" value={editFormData.income} onChange={e => setEditFormData({...editFormData, income: Number(e.target.value)})} className="w-16 border border-green-300 rounded px-1 py-1 text-center font-bold text-green-700 outline-none" />
-                          ) : (
-                             <span className="font-bold text-emerald-600/80">{!isCash && item.income > 0 ? item.income : "-"}</span>
-                          )}
-                      </div>
+                      {/* 3. ФІНАНСИ (На мобільному - сітка 3 колонки) */}
+                      <div className="grid grid-cols-3 gap-2 md:contents w-full">
+                          
+                          {/* Дохід */}
+                          <div className="flex flex-col items-center md:block">
+                              <span className="md:hidden text-[10px] font-bold text-gray-400 uppercase">Дохід</span>
+                              {isEditing && !isCash ? (
+                                 <input type="number" value={editFormData.income} onChange={e => setEditFormData({...editFormData, income: Number(e.target.value)})} className="w-full md:w-16 border border-green-300 rounded px-1 py-1 text-center font-bold text-green-700 outline-none" />
+                              ) : (
+                                 <div className="text-center font-bold text-emerald-600 text-lg md:text-sm">{!isCash && item.income > 0 ? item.income : <span className="text-gray-300">-</span>}</div>
+                              )}
+                          </div>
 
-                      <div className="text-center">
-                          {isEditing ? (
-                             <input type="number" value={editFormData.expense} onChange={e => setEditFormData({...editFormData, expense: Number(e.target.value)})} className="w-16 border border-red-300 rounded px-1 py-1 text-center font-bold text-red-600 outline-none" />
-                          ) : (
-                             <span className="font-bold text-red-500/80">{item.expense > 0 ? item.expense : "-"}</span>
-                          )}
-                      </div>
+                          {/* Витрата */}
+                          <div className="flex flex-col items-center md:block">
+                              <span className="md:hidden text-[10px] font-bold text-gray-400 uppercase">Витрата</span>
+                              {isEditing ? (
+                                 <input type="number" value={editFormData.expense} onChange={e => setEditFormData({...editFormData, expense: Number(e.target.value)})} className="w-full md:w-16 border border-red-300 rounded px-1 py-1 text-center font-bold text-red-600 outline-none" />
+                              ) : (
+                                 <div className="text-center font-bold text-red-500 text-lg md:text-sm">{item.expense > 0 ? item.expense : <span className="text-gray-300">-</span>}</div>
+                              )}
+                          </div>
 
-                      <div className="text-center">
-                          {isEditing && !isCash ? (
-                             <input type="number" value={editFormData.writeoff} onChange={e => setEditFormData({...editFormData, writeoff: Number(e.target.value)})} className="w-16 border border-gray-300 rounded px-1 py-1 text-center font-bold text-gray-600 outline-none" />
-                          ) : (
-                             <span className="font-bold text-slate-400">{!isCash && item.writeoff > 0 ? item.writeoff : "-"}</span>
-                          )}
+                          {/* Списання */}
+                          <div className="flex flex-col items-center md:block">
+                              <span className="md:hidden text-[10px] font-bold text-gray-400 uppercase">Спис.</span>
+                              {isEditing && !isCash ? (
+                                 <input type="number" value={editFormData.writeoff} onChange={e => setEditFormData({...editFormData, writeoff: Number(e.target.value)})} className="w-full md:w-16 border border-gray-300 rounded px-1 py-1 text-center font-bold text-gray-600 outline-none" />
+                              ) : (
+                                 <div className="text-center font-bold text-slate-400 text-lg md:text-sm">{!isCash && item.writeoff > 0 ? item.writeoff : <span className="text-gray-300">-</span>}</div>
+                              )}
+                          </div>
                       </div>
                       
-                      <div className="text-center flex flex-col items-center gap-1">
+                      {/* 4. КНОПКИ ДІЙ (На мобільному - окремий рядок) */}
+                      <div className="flex justify-end items-center gap-3 md:justify-center md:gap-1 w-full border-t border-gray-100 pt-2 md:border-0 md:pt-0">
                           {isEditing ? (
                               <>
-                                <button onClick={saveEdit} className="text-green-600 hover:text-green-800 font-bold" title="Зберегти">💾</button>
-                                <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600" title="Відмінити">✖</button>
+                                <button onClick={saveEdit} className="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold" title="Зберегти">Зберегти</button>
+                                <button onClick={cancelEdit} className="bg-gray-100 text-gray-500 px-3 py-1 rounded text-xs font-bold" title="Відмінити">Відміна</button>
                               </>
                           ) : (
                               <>
-                                <button onClick={() => startEditing(item)} className="text-blue-300 hover:text-blue-600 font-bold px-2" title="Редагувати">✏️</button>
-                                <button onClick={() => handleDelete(item.id!)} className="text-gray-300 hover:text-red-500 font-bold px-2" title="Видалити">×</button>
+                                <button onClick={() => startEditing(item)} className="text-blue-400 hover:text-blue-600 font-bold px-2 py-1 text-sm md:text-base" title="Редагувати">✏️</button>
+                                <button onClick={() => handleDelete(item.id!)} className="text-gray-300 hover:text-red-500 font-bold px-2 py-1 text-lg md:text-base" title="Видалити">×</button>
                               </>
                           )}
                       </div>
@@ -321,13 +346,29 @@ export default function Home() {
           </div>
 
           {items.length > 0 && (
-             <div className={`grid ${gridLayout} bg-white border-t-2 border-slate-200 p-3 items-start`}>
-                <div></div>
-                <div className="pl-2 pt-1 text-xs font-bold text-slate-500 uppercase text-right pr-4">Всього:</div>
-                <div className="flex flex-col items-center"><div className="font-black text-emerald-700 text-sm">{totalIncome} ₴</div><StatusBadge status={dayStatus.income_status} /></div>
-                <div className="flex flex-col items-center"><div className="font-black text-red-600 text-sm">{totalExpense} ₴</div><StatusBadge status={dayStatus.expense_status} /></div>
-                <div className="flex flex-col items-center"><div className="font-black text-slate-600 text-sm">{totalWriteoff} ₴</div><StatusBadge status={dayStatus.writeoff_status} /></div>
-                <div></div>
+             <div className={`grid grid-cols-3 md:grid-cols-[100px_3fr_1fr_1fr_1fr_60px] bg-white border-t-2 border-slate-200 p-3 items-start gap-4 md:gap-0`}>
+                <div className="hidden md:block"></div>
+                <div className="hidden md:block pl-2 pt-1 text-xs font-bold text-slate-500 uppercase text-right pr-4">Всього:</div>
+                
+                <div className="flex flex-col items-center">
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase mb-1">Дохід</span>
+                    <div className="font-black text-emerald-700 text-sm">{totalIncome} ₴</div>
+                    <StatusBadge status={dayStatus.income_status} />
+                </div>
+                
+                <div className="flex flex-col items-center">
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase mb-1">Витрата</span>
+                    <div className="font-black text-red-600 text-sm">{totalExpense} ₴</div>
+                    <StatusBadge status={dayStatus.expense_status} />
+                </div>
+                
+                <div className="flex flex-col items-center">
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase mb-1">Списання</span>
+                    <div className="font-black text-slate-600 text-sm">{totalWriteoff} ₴</div>
+                    <StatusBadge status={dayStatus.writeoff_status} />
+                </div>
+                
+                <div className="hidden md:block"></div>
              </div>
           )}
         </div>
