@@ -32,7 +32,7 @@ export default function Header() {
         .single();
       
       setRole(data?.role || "seller");
-      setName(data?.full_name || user.email?.split('@')[0] || "Продавець");
+      setName(data?.full_name || user.email?.split('@')[0] || "Користувач");
     } else {
       setRole(null);
       setName("");
@@ -44,44 +44,30 @@ export default function Header() {
     router.push("/login");
   };
 
-  // Не показуємо шапку тільки на сторінці логіну
-  if (pathname === "/login") {
-    return null;
-  }
+  if (pathname === "/login") return null;
+  const homeLink = role === 'admin' ? "/admin" : "/";
 
   return (
     <nav className="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
         
-        {/* Логотип - ВИДНО ЗАВЖДИ */}
         <div className="font-bold text-lg tracking-wider flex items-center gap-2">
           <span>🍃</span> 
-          <Link href="/" className="hover:opacity-90 transition">FOP MANAGER</Link>
+          <Link href={homeLink} className="hover:opacity-90 transition">
+             FOP MANAGER
+          </Link>
         </div>
 
-        {/* Права частина */}
+        {/* Кнопку "Звіти" ми звідси ПРИБРАЛИ */}
+
         <div className="flex gap-3 text-sm font-medium items-center">
-          
           {user ? (
             <>
-              {/* Бейдж з іменем */}
-              <div className="flex items-center gap-2 bg-emerald-800/40 px-3 py-1.5 rounded-full border border-emerald-600/30 text-emerald-50 cursor-default">
+              <div className="hidden md:flex items-center gap-2 bg-emerald-800/40 px-3 py-1.5 rounded-full border border-emerald-600/30 text-emerald-50 cursor-default">
                 <span className="text-emerald-200">👤</span>
-                <span className="max-w-[100px] sm:max-w-[150px] truncate">{name}</span>
+                <span className="max-w-[150px] truncate">{name}</span>
               </div>
-
-              {/* Адмінка */}
-              {role === 'admin' && (
-                <Link href="/admin" className="text-yellow-300 hover:text-yellow-200 transition font-bold px-2 whitespace-nowrap">
-                  🛡 <span className="hidden sm:inline">Адмінка</span>
-                </Link>
-              )}
-
-              {/* Вихід */}
-              <button 
-                onClick={handleLogout} 
-                className="ml-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1.5 rounded-lg transition backdrop-blur-sm whitespace-nowrap"
-              >
+              <button onClick={handleLogout} className="ml-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1.5 rounded-lg transition backdrop-blur-sm whitespace-nowrap">
                 Вийти
               </button>
             </>

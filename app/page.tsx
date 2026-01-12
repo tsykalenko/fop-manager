@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient"; 
+import { useRouter } from "next/navigation"; // Додали useRouter
 
 interface TransactionData {
   id?: number;
@@ -24,12 +25,11 @@ export default function Home() {
   const [items, setItems] = useState<TransactionData[]>([]);
   const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const router = useRouter(); // Ініціалізуємо роутер
   const dateInputRef = useRef<any>(null);
 
-  const [dayStatus, setDayStatus] = useState({
-    income_status: "pending", expense_status: "pending", writeoff_status: "pending"
-  });
-
+  // ... (решта стейтів без змін) ...
+  const [dayStatus, setDayStatus] = useState({ income_status: "pending", expense_status: "pending", writeoff_status: "pending" });
   const [mode, setMode] = useState<"trade" | "cash_drop">("trade");
   const [title, setTitle] = useState("");
   const [income, setIncome] = useState("");
@@ -37,14 +37,35 @@ export default function Home() {
   const [writeoff, setWriteoff] = useState("");
   const [method, setMethod] = useState("Готівка");
   const [status, setStatus] = useState<"paid" | "unpaid">("paid");
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<TransactionData>>({});
 
-  useEffect(() => { 
+  // 👇 НОВА ПЕРЕВІРКА ПРАВ ДОСТУПУ
+  useEffect(() => {
+    const checkAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      
+      // Перевіряємо роль
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      // ЯКЩО АДМІН -> ВИКИДАЄМО В АДМІНКУ
+      if (profile?.role === 'admin') {
+        router.push("/admin");
+      }
+    };
+
+    checkAccess();
     fetchItems();
     fetchDayStatus();
-  }, [viewDate]);
+  }, [viewDate, router]);
 
   async function fetchItems() {
     setLoading(true);
@@ -160,16 +181,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32 font-sans text-gray-900">
       <header className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 shadow-md mb-4 relative rounded-b-[2rem]">
-        <div className="max-w-5xl mx-auto flex justify-center items-center px-4 gap-4 relative z-10">
-            <button onClick={() => changeDate(-1)} className="text-2xl font-bold opacity-70 hover:opacity-100 transition p-1">‹</button>
-            <div onClick={openCalendar} className="group flex flex-col items-center cursor-pointer bg-white/10 hover:bg-white/20 transition px-6 py-1 rounded-full border border-white/20 backdrop-blur-sm select-none min-w-[140px]">
-                <div className="text-[10px] text-emerald-100 uppercase font-bold tracking-widest leading-none mb-0.5">{new Date(viewDate).getFullYear()}</div>
-                <div className="text-lg font-bold capitalize whitespace-nowrap leading-none pb-0.5">{getPrettyDate(viewDate)}</div>
-                <input ref={dateInputRef} type="date" value={viewDate} onChange={(e) => setViewDate(e.target.value)} className="absolute opacity-0 w-0 h-0" />
-            </div>
-            <button onClick={() => changeDate(1)} className="text-2xl font-bold opacity-70 hover:opacity-100 transition p-1">›</button>
-        </div>
-      </header>
+  <div className="max-w-5xl mx-auto flex justify-center items-center px-4 gap-4 relative z-10">
+      
+      {/* ЛІВА КНОПКА: ЗВІТИ (Додали сюди) */}
+      <a href="/reports" className="absolute left-4 md:left-10 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-sm transition flex items-center gap-1">
+          📊 <span className="hidden md:inline">Звіти</span>
+      </a>
+
+      <button onClick={() => changeDate(-1)} className="text-2xl font-bold opacity-70 hover:opacity-100 transition p-1">‹</button>
+      <div onClick={openCalendar} className="group flex flex-col items-center cursor-pointer bg-white/10 hover:bg-white/20 transition px-6 py-1 rounded-full border border-white/20 backdrop-blur-sm select-none min-w-[140px]">
+          <div className="text-[10px] text-emerald-100 uppercase font-bold tracking-widest leading-none mb-0.5">{new Date(viewDate).getFullYear()}</div>
+          <div className="text-lg font-bold capitalize whitespace-nowrap leading-none pb-0.5">{getPrettyDate(viewDate)}</div>
+          <input ref={dateInputRef} type="date" value={viewDate} onChange={(e) => setViewDate(e.target.value)} className="absolute opacity-0 w-0 h-0" />
+      </div>
+      <button onClick={() => changeDate(1)} className="text-2xl font-bold opacity-70 hover:opacity-100 transition p-1">›</button>
+  </div>
+</header>
 
       <main className="max-w-5xl mx-auto px-2 md:px-4 space-y-4">
         
