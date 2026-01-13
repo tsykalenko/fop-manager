@@ -1,3 +1,4 @@
+// app/reports/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// 👇 ЗМІНІТЬ ЦІ 3 РЯДКИ (Додайте дужки { })
+// 👇 Імпорти компонентів (з фігурними дужками, як ми домовлялися)
 import { CreateReport } from "./components/CreateReport";
 import { ReportPreview } from "./components/ReportPreview";
 import { ReportList } from "./components/ReportList";
@@ -28,9 +29,10 @@ export default function ReportsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     setUserId(user.id);
+    
     const { data: profile } = await supabase.from("profiles").select("role, full_name").eq("id", user.id).single();
     setRole(profile?.role || "seller");
-    setUserName(profile?.full_name || "Продавець");
+    setUserName(profile?.full_name || "Користувач");
   }
 
   async function fetchSavedReports() {
@@ -93,11 +95,19 @@ export default function ReportsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-10">
-      <nav className="bg-emerald-700 text-white shadow-md p-4 mb-6">
+      <nav className={`${role === 'admin' ? 'bg-emerald-800' : 'bg-emerald-600'} text-white shadow-md p-4 mb-6 sticky top-0 z-50`}>
           <div className="max-w-4xl mx-auto flex justify-between items-center">
-              <Link href={role === 'admin' ? '/admin' : '/'} className="font-bold text-lg hover:underline opacity-80">← Назад</Link>
-              <h1 className="font-bold text-xl">📊 Звіти</h1>
-              <div className="w-20"></div>
+              
+              {/* 👇 КНОПКА НАЗАД: В залежності від ролі веде в різні місця */}
+              <Link href={role === 'admin' ? '/admin' : '/seller'} className="font-bold text-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded transition flex items-center gap-2">
+                  ← Назад
+              </Link>
+              
+              <h1 className="font-bold text-lg flex items-center gap-2">
+                  📊 Звіти <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded uppercase font-normal">{role === 'admin' ? 'Admin' : 'Seller'}</span>
+              </h1>
+              
+              <div className="w-20"></div> {/* Пустий блок для балансу */}
           </div>
       </nav>
 

@@ -1,82 +1,82 @@
+import { createClient } from "@/lib/supabase/server"; // 👈 Беремо наш новий серверний клієнт
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
 
 export async function GET(request: Request) {
+  // 1. Створюємо клієнт (тепер це асинхронна функція!)
+  const supabase = await createClient();
+  
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
-  const id = searchParams.get("id");
-  const limit = searchParams.get("limit");
 
-  let query = supabase
-    .from("transactions")
-    .select(`*, profiles ( full_name )`)
-    .order("created_at", { ascending: false });
-
-  if (id) {
-    query = query.eq("id", id);
-  } else if (date) {
-    // 🛑 БУЛО: фільтр по created_at (помилка)
-    // ✅ СТАЛО: фільтр по колонці date (календарна дата)
-    query = query.eq("date", date);
-  } else if (limit) {
-    query = query.limit(Number(limit));
-  }
+  let query = supabase.from("transactions").select("*").order("created_at", { ascending: true });
+  if (date) query = query.eq("date", date);
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  
+  if (error) {
+    console.error("Supabase Error:", error);
+    return NextResponse.json([], { status: 200 });
+  }
+  
   return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient(); // 👈 await
   const body = await request.json();
-  const { data, error } = await supabase.from("transactions").insert([body]).select();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
-}
-
-export async function DELETE(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "No ID" }, { status: 400 });
-
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  
+  const { error } = await supabase.from("transactions").insert(body);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ success: true });
 }
 
 export async function PATCH(request: Request) {
+  const supabase = await createClient(); // 👈 await
   const body = await request.json();
-  const { 
-    id, 
-    title, income, expense, writeoff, payment_method, payment_status, 
-    admin_check, admin_comment, seller_comment,
-    fop_name, supplier_payment_date
-  } = body; 
+  const { id, ...updates } = body;
 
-  const updates: any = {};
+  // Отримуємо старі дані
+  const { data: oldData } = await supabase.from("transactions").select("*").eq("id", id).single();
 
-  if (admin_check !== undefined) {
-    updates.admin_check = admin_check;
-    if (admin_comment !== undefined) updates.admin_comment = admin_comment;
-  }
-  if (seller_comment !== undefined) updates.seller_comment = seller_comment;
+  // Оновлюємо
+  const { error } = await supabase.from("transactions").update(updates).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  if (title !== undefined) updates.title = title;
-  if (income !== undefined) updates.income = income;
-  if (expense !== undefined) updates.expense = expense;
-  if (writeoff !== undefined) updates.writeoff = writeoff;
-  if (payment_method !== undefined) updates.payment_method = payment_method;
-  if (payment_status !== undefined) updates.payment_status = payment_status;
-
-  if (fop_name !== undefined) updates.fop_name = fop_name;
-  if (supplier_payment_date !== undefined) updates.supplier_payment_date = supplier_payment_date;
-
-  if (income !== undefined || expense !== undefined || writeoff !== undefined || payment_status !== undefined) {
-      updates.admin_check = 'pending';
+  // Логування
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && oldData) {
+       await supabase.from("transaction_logs").insert({
+          transaction_id: id,
+          changed_by: user.id,
+          change_type: 'UPDATE',
+          old_data: oldData,
+          new_data: { ...oldData, ...updates }
+      });
   }
 
-  const { data, error } = await supabase.from("transactions").update(updates).eq("id", id).select();
+  return NextResponse.json({ success: true });
+}
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+export async function DELETE(request: Request) {
+  const supabase = await createClient(); // 👈 await
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  const { data: oldData } = await supabase.from("transactions").select("*").eq("id", id).single();
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && oldData) {
+      await supabase.from("transaction_logs").insert({
+          transaction_id: oldData.id,
+          changed_by: user.id,
+          change_type: 'DELETE',
+          old_data: oldData,
+          new_data: null
+      });
+  }
+
+  return NextResponse.json({ success: true });
 }

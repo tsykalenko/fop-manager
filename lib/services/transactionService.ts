@@ -1,75 +1,53 @@
-import { supabase } from "@/lib/supabaseClient";
+// lib/services/transactionService.ts
+import { Transaction } from "@/app/types";
 
-// 👇 ОСЬ ТУТ МИ ОНОВЛЮЄМО СПИСОК ДОЗВОЛЕНИХ ПОЛІВ
-export interface TransactionData {
-  id?: number;
-  date: string;
-  title: string;
-  category: "trade" | "cash_drop";
-  income: number;
-  expense: number;
-  writeoff: number;
-  payment_method: string;
-  payment_status: "paid" | "unpaid";
-  actual_payment_date?: string | null;
-  admin_check: "pending" | "valid" | "issue";
+export const transactionService = {
   
-  // 👇 ДОДАЄМО ЦЕЙ РЯДОК:
-  author_id?: string; 
-  
-  // 👇 І ЦЕЙ (для відображення імені):
-  profiles?: {
-    full_name: string;
-  };
-}
-export class TransactionService {
-  
-  // 👇 ОСЬ ТУТ БУЛА ПРОБЛЕМА
-  async getByDate(date: string) {
-    const { data, error } = await supabase
-      .from("transactions")
-      .select(`
-        *,
-        profiles:author_id ( full_name )
-      `) // 👈 Цей рядок "підтягує" імена!
-      .eq("date", date)
-      .order("created_at", { ascending: false });
+  // 1. Отримати транзакції за дату
+  async getByDate(date: string): Promise<Transaction[]> {
+    try {
+      const res = await fetch(`/api/transactions?date=${date}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return await res.json();
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  },
 
-    if (error) throw new Error(error.message);
-    return data;
-  }
+  // 2. Отримати всю історію (ліміт 50)
+  async getHistory(): Promise<Transaction[]> {
+    // Тут ми можемо викликати інший ендпоінт або передати параметр
+    // Для спрощення поки що просто звертаємось до API
+    const res = await fetch(`/api/transactions`); 
+    return await res.json();
+  },
 
-  async create(item: TransactionData) {
-    // Видаляємо зайві поля перед записом в БД (profiles не треба записувати, він тільки для читання)
-    const { id, profiles, ...payload } = item;
-    
-    const { data, error } = await supabase
-      .from("transactions")
-      .insert([payload])
-      .select();
+  // 3. Створити нову
+  async create(data: Transaction) {
+    const res = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  },
 
-    if (error) throw new Error(error.message);
-    return data;
-  }
+  // 4. Оновити (наприклад, метод оплати)
+  async update(id: number, updates: Partial<Transaction>) {
+    const res = await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    return res.ok;
+  },
 
-  async update(id: number, updates: Partial<TransactionData>) {
-    // Теж чистимо від зайвого
-    const { profiles, ...cleanUpdates } = updates;
-
-    const { error } = await supabase
-      .from("transactions")
-      .update(cleanUpdates)
-      .eq("id", id);
-
-    if (error) throw new Error(error.message);
-    return true;
-  }
-
+  // 5. Видалити
   async delete(id: number) {
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    return true;
+    const res = await fetch(`/api/transactions?id=${id}`, {
+      method: "DELETE",
+    });
+    return res.ok;
   }
-}
-
-export const transactionService = new TransactionService();
+};
