@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # 1. ФРОНТЕНД (Твій Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fop_frontend
+    ports:
+      - "3000:3000"  # Доступ по localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: always
+    networks:
+      - fop_network
+
+  # 2. БЕКЕНД (PHP + Laravel)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fop_backend
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+    networks:
+      - fop_network
+
+  # 3. NGINX (Веб-сервер для Laravel)
+  nginx:
+    image: nginx:alpine
+    container_name: fop_nginx
+    ports:
+      - "8080:80" # API буде доступне по localhost:8000
+    volumes:
+      - ./backend:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - backend
+    networks:
+      - fop_network
+
+networks:
+  fop_network:
+    driver: bridge
