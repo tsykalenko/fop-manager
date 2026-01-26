@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import DailyForm from "./DailyForm";
-import DailyTable from "./DailyTable";
-import CalendarGrid from "./CalendarGrid";
+
+// 👇 Оновлені імпорти (нові назви файлів)
+import TransactionForm from "./TransactionForm";
+import TransactionsTable from "./TransactionsTable";
+import HistoryCalendar from "./HistoryCalendar";
+import ImportModal from "./modals/ImportModal"; // 👈 Додана модалка
 
 interface Transaction {
   id: number;
@@ -12,17 +15,25 @@ interface Transaction {
   type: 'income' | 'expense';
   amount: string;
   expense_amount: string;
+  
+  // 👇 Виправив тип (було 'nullable|numeric')
+  full_value: string | null; 
+
   writeoff_amount: string;
   payment_method: string;
+  payment_status: 'paid' | 'unpaid';
   status: 'pending' | 'approved' | 'rejected';
   category: string;
   comment: string | null;
 }
 
-export default function DailyTab() {
+export default function DailyManager() { // 👇 Перейменував компонент на Manager
   const [items, setItems] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // 👇 Стейт для відкриття модалки імпорту
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -77,27 +88,27 @@ export default function DailyTab() {
         {/* ВЕРХНІЙ БЛОК: Календар + Форма */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
             
-            {/* 1. КАЛЕНДАР (Займає 4 з 12 колонок, тобто 1/3) */}
+            {/* 1. КАЛЕНДАР (Займає 4 з 12 колонок) */}
             <div className="xl:col-span-4 h-full">
-                <CalendarGrid 
+                <HistoryCalendar 
                     currentDate={selectedDate}
                     onDateSelect={setSelectedDate} 
                     items={items} 
                 />
             </div>
 
-            {/* 2. ФОРМА (Займає 8 з 12 колонок, тобто 2/3) */}
+            {/* 2. ФОРМА (Займає 8 з 12 колонок) */}
             <div className="xl:col-span-8 h-full">
-                <DailyForm 
+                <TransactionForm 
                     onAdd={handleAddNewItem} 
                     currentDate={selectedDate} 
                 />
             </div>
         </div>
 
-        {/* НИЖНІЙ БЛОК: Таблиця (На всю ширину) */}
+        {/* НИЖНІЙ БЛОК: Таблиця */}
         <div>
-            {/* Заголовок таблиці */}
+            {/* Заголовок таблиці та кнопки */}
             <div className="flex items-center justify-between mb-4 px-2">
                  <div>
                      <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
@@ -105,13 +116,35 @@ export default function DailyTab() {
                         <span className="text-slate-400 text-sm font-normal">| {selectedDate}</span>
                      </h2>
                  </div>
-                 <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    {filteredItems.length === 0 ? "Пусто" : `${filteredItems.length} записів`}
+                 
+                 <div className="flex items-center gap-4">
+                    {/* 👇 КНОПКА ІМПОРТУ */}
+                    <button 
+                        onClick={() => setIsImportOpen(true)}
+                        className="text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-100"
+                    >
+                        📤 Імпорт Excel
+                    </button>
+
+                    <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                        {filteredItems.length === 0 ? "Пусто" : `${filteredItems.length} записів`}
+                    </div>
                  </div>
             </div>
 
-            <DailyTable items={filteredItems} loading={loading} />
+            <TransactionsTable 
+                items={filteredItems} 
+                loading={loading} 
+                onRefresh={loadData} 
+            />
         </div>
+
+        {/* 👇 МОДАЛКА ІМПОРТУ */}
+        <ImportModal 
+            isOpen={isImportOpen} 
+            onClose={() => setIsImportOpen(false)} 
+            onSuccess={loadData} 
+        />
 
     </div>
   );

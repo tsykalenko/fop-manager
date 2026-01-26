@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"; // <--- useEffect
 import AppHeader, { TabItem } from "@/components/AppHeader";
 import AuthGuard from "@/components/AuthGuard";
 
-import DailyTab from "@/components/daily/DailyTab";
+import DailyTab from "@/components/daily-report/DailyManager";
 import AllRecordsTab from "@/components/allRecords/AllRecordsTab";
 import ReportsTab from "@/components/reports/ReportsTab";
 import RevisionTab from "@/components/revision/RevisionTab";

@@ -11,7 +11,7 @@ import AllRecordsTab from "@/components/allRecords/AllRecordsTab";
 import RevisionTab from "@/components/revision/RevisionTab";
 import SalaryTab from "@/components/salary/SalaryTab";
 import SettingsTab from "@/components/settings/SettingsTab";
-import DailyTab from "@/components/daily/DailyTab";
+import DailyTab from "@/components/daily-report/DailyManager";
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("validation");

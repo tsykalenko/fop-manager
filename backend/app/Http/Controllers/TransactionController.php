@@ -16,47 +16,56 @@ class TransactionController extends Controller
 
     // 2. Зберегти нову операцію (POST)
     public function store(Request $request)
-    {
-        // 1. ВАЛІДАЦІЯ: Перевіряємо, чи дані коректні
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'invoice_number' => 'nullable|string',
-            'type' => 'required|in:income,expense', // Тільки ці два слова
-            'status' => 'required|in:pending,approved,rejected',
-            'category' => 'required|string',
-            'payment_method' => 'required|string',
-            'comment' => 'nullable|string',
-            
-            // Наші нові герої (можуть бути пустими, тоді буде 0)
-            'amount' => 'nullable|numeric',          // Дохід
-            'expense_amount' => 'nullable|numeric',  // Витрата
-            'writeoff_amount' => 'nullable|numeric', // Списання
-        ]);
+{
+    $validated = $request->validate([
+        // ... старі поля ...
+        'date' => 'required|date',
+        'invoice_number' => 'nullable|string',
+        'type' => 'required|in:income,expense',
+        'status' => 'required|in:pending,approved,rejected',
+        'category' => 'required|string',
+        'payment_method' => 'required|string',
+        'full_value' => 'nullable|numeric',
+        'payment_status' => 'required|in:paid,unpaid', 
+        'comment' => 'nullable|string',
+        'amount' => 'nullable|numeric',
+        'expense_amount' => 'nullable|numeric',
+        'writeoff_amount' => 'nullable|numeric',
+    ]);
 
-        // 2. СТВОРЕННЯ: Якщо валідація пройшла, просто зберігаємо
-        // Ларавель сам візьме потрібні поля з масиву $validated
-        $transaction = Transaction::create($validated);
-
-        return response()->json($transaction, 201);
-    }
-
-    // 3. Оновлення (PUT)
+    $transaction = Transaction::create($validated);
+    return response()->json($transaction, 201);
+}
+    // 3. Оновлення запису
     public function update(Request $request, $id)
     {
         $transaction = Transaction::findOrFail($id);
-        
-        // Тут теж бажано провалідувати, але можна дозволити часткове оновлення
-        $transaction->update($request->all());
-        
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'invoice_number' => 'nullable|string',
+            'type' => 'required|in:income,expense',
+            'amount' => 'nullable|numeric',
+            'expense_amount' => 'nullable|numeric',
+            'full_value' => 'nullable|numeric',
+            'writeoff_amount' => 'nullable|numeric',
+            'payment_method' => 'required|string',
+            'payment_status' => 'required|in:paid,unpaid',
+            'status' => 'required|in:pending,approved,rejected',
+            'category' => 'required|string',
+            'comment' => 'nullable|string',
+        ]);
+
+        $transaction->update($validated);
+
         return response()->json($transaction);
     }
-
     // 4. Видалити операцію (DELETE)
     public function destroy($id)
     {
         $transaction = Transaction::findOrFail($id);
         $transaction->delete();
-        
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 }
