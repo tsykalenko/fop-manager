@@ -6,7 +6,8 @@ import { useState, useEffect } from "react";
 import TransactionForm from "./TransactionForm";
 import TransactionsTable from "./TransactionsTable";
 import HistoryCalendar from "./HistoryCalendar";
-import ImportModal from "./modals/ImportModal"; // 👈 Додана модалка
+import ImportModal from "./utils/ImportXlsx";
+import { exportTransactionsToExcel } from "./utils/ExportXlsx";
 
 interface Transaction {
   id: number;
@@ -117,7 +118,15 @@ export default function DailyManager() { // 👇 Перейменував ком
                      </h2>
                  </div>
                  
-                 <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-3">
+                    {/* 👇 НОВА КНОПКА ЕКСПОРТУ */}
+                    <button 
+                        onClick={() => exportTransactionsToExcel(filteredItems, selectedDate)}
+                        className="text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm"
+                    >
+                        📥 Експорт
+                    </button>
+
                     {/* 👇 КНОПКА ІМПОРТУ */}
                     <button 
                         onClick={() => setIsImportOpen(true)}
@@ -125,6 +134,8 @@ export default function DailyManager() { // 👇 Перейменував ком
                     >
                         📤 Імпорт Excel
                     </button>
+
+                    <div className="h-4 w-[1px] bg-slate-200 mx-1"></div>
 
                     <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
                         {filteredItems.length === 0 ? "Пусто" : `${filteredItems.length} записів`}
