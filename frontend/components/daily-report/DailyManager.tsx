@@ -33,12 +33,19 @@ export default function DailyManager() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isInspectionMode, setIsInspectionMode] = useState(false);
 
+  // 👇 Визначаємо адресу один раз для всього компонента
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+      
       const res = await fetch(`${apiUrl}/api/transactions`, {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { 
+            "Authorization": `Bearer ${token}`,
+            "ngrok-skip-browser-warning": "true", // 👈 ОБОВ'ЯЗКОВО для Ngrok
+            "Content-Type": "application/json"
+        }
       });
 
       if (res.status === 401) { window.location.href = "/"; return; }
@@ -49,7 +56,7 @@ export default function DailyManager() {
       }
       setLoading(false);
     } catch (err) {
-      console.error(err);
+      console.error("Помилка завантаження:", err);
       setLoading(false);
     }
   };
@@ -62,32 +69,27 @@ export default function DailyManager() {
       
       // 2. Фільтр "Режим перевірки"
       if (isInspectionMode) {
-          // Ми перевіряємо нестрого (==), щоб 1 дорівнювало true
-          // Також перевіряємо, чи це банк, про всяк випадок
           const isOfficialFlag = i.is_official == true; 
-          
-          // Додаткова перестраховка: якщо в базі хаос, віримо тексту "Банк"
           const isBankText = i.payment_method?.toLowerCase().includes('банк') || 
                              i.payment_method?.toLowerCase().includes('bank') ||
                              i.payment_method?.toLowerCase().includes('card') ||
-                             i.payment_method === '1'; // Для старих записів імпорту
+                             i.payment_method === '1';
 
           return dateMatch && (isOfficialFlag || isBankText);
       }
 
-      // Якщо режим вимкнено — показуємо все, що співпало по даті
       return dateMatch;
   });
 
   const handleAddNewItem = async (newItem: any) => {
     const token = localStorage.getItem("token");
     try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
-      const res = await fetch(`${apiUrl}/api/transactions`, {
+        const res = await fetch(`${apiUrl}/api/transactions`, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                "Authorization": `Bearer ${token}`,
+                "ngrok-skip-browser-warning": "true" // 👈 ОБОВ'ЯЗКОВО для Ngrok
             },
             body: JSON.stringify(newItem)
         });
@@ -95,7 +97,8 @@ export default function DailyManager() {
         if (res.ok) {
             loadData();
         } else {
-            alert("Помилка збереження!");
+            const errorData = await res.json();
+            alert(`Помилка: ${errorData.message || "Не вдалося зберегти"}`);
         }
     } catch (error) {
         console.error(error);
@@ -131,7 +134,6 @@ export default function DailyManager() {
                         <span className="text-slate-400 text-sm font-normal">| {selectedDate}</span>
                      </h2>
 
-                     {/* 👇 ПЕРЕМИКАЧ (У продавця) */}
                      <label className="flex items-center gap-2 cursor-pointer bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition select-none border border-slate-200 shadow-sm">
                         <input 
                             type="checkbox" 
