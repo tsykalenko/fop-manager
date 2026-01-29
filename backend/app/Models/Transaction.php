@@ -18,9 +18,15 @@ class Transaction extends Model
     'full_value',
     'writeoff_amount',
     'payment_method',
+    'is_official',
     'payment_status',
     'status',
     'category',
     'comment',
 ];
+protected $casts = [
+        'is_official' => 'boolean', // Це перетворить 0/1 на true/false
+        'amount' => 'decimal:2',
+        'expense_amount' => 'decimal:2',
+    ];
 }

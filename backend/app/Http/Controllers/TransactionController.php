@@ -16,27 +16,31 @@ class TransactionController extends Controller
 
     // 2. Зберегти нову операцію (POST)
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        // ... старі поля ...
-        'date' => 'required|date',
-        'invoice_number' => 'nullable|string',
-        'type' => 'required|in:income,expense',
-        'status' => 'required|in:pending,approved,rejected',
-        'category' => 'required|string',
-        'payment_method' => 'required|string',
-        'full_value' => 'nullable|numeric',
-        'payment_status' => 'required|in:paid,unpaid', 
-        'comment' => 'nullable|string',
-        'amount' => 'nullable|numeric',
-        'expense_amount' => 'nullable|numeric',
-        'writeoff_amount' => 'nullable|numeric',
-    ]);
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'invoice_number' => 'nullable|string',
+            'type' => 'required|in:income,expense',
+            'status' => 'required|in:pending,approved,rejected',
+            'category' => 'required|string',
+            'payment_method' => 'required|string',
+            
+            // 👇 ДОДАНО: Валідація для нового поля
+            'is_official' => 'boolean', 
 
-    $transaction = Transaction::create($validated);
-    return response()->json($transaction, 201);
-}
-    // 3. Оновлення запису
+            'full_value' => 'nullable|numeric',
+            'payment_status' => 'required|in:paid,unpaid', 
+            'comment' => 'nullable|string',
+            'amount' => 'nullable|numeric',
+            'expense_amount' => 'nullable|numeric',
+            'writeoff_amount' => 'nullable|numeric',
+        ]);
+
+        $transaction = Transaction::create($validated);
+        return response()->json($transaction, 201);
+    }
+
+    // 3. Оновлення запису (PUT)
     public function update(Request $request, $id)
     {
         $transaction = Transaction::findOrFail($id);
@@ -50,6 +54,10 @@ class TransactionController extends Controller
             'full_value' => 'nullable|numeric',
             'writeoff_amount' => 'nullable|numeric',
             'payment_method' => 'required|string',
+            
+            // 👇 ДОДАНО: Тут теж треба дозволити оновлювати це поле
+            'is_official' => 'boolean',
+
             'payment_status' => 'required|in:paid,unpaid',
             'status' => 'required|in:pending,approved,rejected',
             'category' => 'required|string',
@@ -60,6 +68,7 @@ class TransactionController extends Controller
 
         return response()->json($transaction);
     }
+
     // 4. Видалити операцію (DELETE)
     public function destroy($id)
     {

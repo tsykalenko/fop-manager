@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useInspection } from "@/context/InspectionContext"; // 👇 Підключаємось до глобального ока
 
 import TransactionForm from "./TransactionForm";
 import TransactionsTable from "./TransactionsTable";
@@ -29,56 +30,51 @@ export default function DailyManager() {
   const [items, setItems] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isInspectionMode, setIsInspectionMode] = useState(false);
 
-  // 👇 Визначаємо адресу один раз для всього компонента
+  // 👇 Беремо стан із глобального контексту
+  const { isInspectionMode } = useInspection();
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      
       const res = await fetch(`${apiUrl}/api/transactions`, {
         headers: { 
             "Authorization": `Bearer ${token}`,
-            "ngrok-skip-browser-warning": "true", // 👈 ОБОВ'ЯЗКОВО для Ngrok
+            "ngrok-skip-browser-warning": "true",
             "Content-Type": "application/json"
         }
       });
 
       if (res.status === 401) { window.location.href = "/"; return; }
       
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setItems(data);
+      const rawData = await res.json();
+      if (Array.isArray(rawData)) {
+        // Нормалізація даних
+        const cleanData = rawData.map((item: any) => {
+            const method = item.payment_method ? String(item.payment_method).toLowerCase() : "";
+            const isBank = method.includes('банк') || method.includes('bank') || method.includes('card') || method.includes('термінал');
+            const officialBoolean = item.is_official === true || item.is_official === 1 || item.is_official === "1" || isBank;
+            return { ...item, is_official: officialBoolean };
+        });
+        setItems(cleanData);
       }
       setLoading(false);
     } catch (err) {
-      console.error("Помилка завантаження:", err);
+      console.error(err);
       setLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, []);
 
+  // 👇 Фільтрація на основі глобального перемикача
   const filteredItems = items.filter(i => {
-      // 1. Фільтр по даті
       const dateMatch = i.date === selectedDate;
-      
-      // 2. Фільтр "Режим перевірки"
-      if (isInspectionMode) {
-          const isOfficialFlag = i.is_official == true; 
-          const isBankText = i.payment_method?.toLowerCase().includes('банк') || 
-                             i.payment_method?.toLowerCase().includes('bank') ||
-                             i.payment_method?.toLowerCase().includes('card') ||
-                             i.payment_method === '1';
-
-          return dateMatch && (isOfficialFlag || isBankText);
-      }
-
-      return dateMatch;
+      const officialMatch = isInspectionMode ? i.is_official === true : true;
+      return dateMatch && officialMatch;
   });
 
   const handleAddNewItem = async (newItem: any) => {
@@ -89,21 +85,13 @@ export default function DailyManager() {
             headers: { 
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${token}`,
-                "ngrok-skip-browser-warning": "true" // 👈 ОБОВ'ЯЗКОВО для Ngrok
+                "ngrok-skip-browser-warning": "true"
             },
             body: JSON.stringify(newItem)
         });
-
-        if (res.ok) {
-            loadData();
-        } else {
-            const errorData = await res.json();
-            alert(`Помилка: ${errorData.message || "Не вдалося зберегти"}`);
-        }
-    } catch (error) {
-        console.error(error);
-        alert("Помилка з'єднання");
-    }
+        if (res.ok) { loadData(); } 
+        else { alert("Помилка збереження"); }
+    } catch (error) { console.error(error); alert("Помилка з'єднання"); }
   };
 
   return (
@@ -133,18 +121,7 @@ export default function DailyManager() {
                         📜 Історія операцій
                         <span className="text-slate-400 text-sm font-normal">| {selectedDate}</span>
                      </h2>
-
-                     <label className="flex items-center gap-2 cursor-pointer bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition select-none border border-slate-200 shadow-sm">
-                        <input 
-                            type="checkbox" 
-                            className="toggle toggle-sm toggle-error" 
-                            checked={isInspectionMode}
-                            onChange={(e) => setIsInspectionMode(e.target.checked)}
-                        />
-                        <span className={`text-xs font-bold ${isInspectionMode ? "text-red-600" : "text-slate-500"}`}>
-                            {isInspectionMode ? "🛡️ РЕЖИМ ПЕРЕВІРКИ" : "👁️ Всі записи"}
-                        </span>
-                     </label>
+                     {/* ТУТ БІЛЬШЕ НЕМАЄ КНОПКИ ПЕРЕМИКАННЯ */}
                  </div>
                  
                  <div className="flex items-center gap-3">
@@ -154,16 +131,13 @@ export default function DailyManager() {
                     >
                         📥 Експорт
                     </button>
-
                     <button 
                         onClick={() => setIsImportOpen(true)}
                         className="text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-100"
                     >
                         📤 Імпорт Excel
                     </button>
-
                     <div className="h-4 w-[1px] bg-slate-200 mx-1"></div>
-
                     <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
                         {filteredItems.length === 0 ? "Пусто" : `${filteredItems.length} записів`}
                     </div>
@@ -182,7 +156,6 @@ export default function DailyManager() {
             onClose={() => setIsImportOpen(false)} 
             onSuccess={loadData} 
         />
-
     </div>
   );
 }

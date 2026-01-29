@@ -13,7 +13,7 @@ return [
     'allowed_methods' => ['*'],
 
     // 👇 Дозволяємо нашому фронтенду стукати сюди
-    'allowed_origins' => ['http://localhost:3000'],
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 
@@ -24,6 +24,6 @@ return [
     'max_age' => 0,
 
     // 👇 Це важливо для авторизації (куки/токени)
-    'supports_credentials' => true,
+    'supports_credentials' => false,
 
 ];

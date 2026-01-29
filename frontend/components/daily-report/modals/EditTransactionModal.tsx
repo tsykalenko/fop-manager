@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CustomSelect from "../ui/SelectDropdown"; // 👈 Імпортуємо
+import CustomSelect from "../uiDaily-report/SelectDropdown"; // 👈 Імпортуємо
 
 interface Transaction {
   id: number;

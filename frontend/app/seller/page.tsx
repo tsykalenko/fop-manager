@@ -1,58 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react"; // <--- useEffect
-import AppHeader, { TabItem } from "@/components/AppHeader";
-import AuthGuard from "@/components/AuthGuard";
+import { useState } from "react"; // Якщо використовується для стану вкладок
+import DailyManager from "@/components/daily-report/DailyManager"; 
+import Navbar from "@/components/Navbar"; // Якщо є
 
-import DailyTab from "@/components/daily-report/DailyManager";
-import AllRecordsTab from "@/components/allRecords/AllRecordsTab";
-import ReportsTab from "@/components/reports/ReportsTab";
-import RevisionTab from "@/components/revision/RevisionTab";
+// 👇 1. Додаємо імпорти для "Ока"
+import { InspectionProvider } from "@/context/InspectionContext";
+import InspectionToggle from "@/components/ui/InspectionToggle";
 
 export default function SellerPage() {
-  const [activeTab, setActiveTab] = useState("daily");
-
-  // 1. ЗАВАНТАЖЕННЯ
-  useEffect(() => {
-    const savedTab = localStorage.getItem("seller_active_tab");
-    if (savedTab) {
-      setActiveTab(savedTab);
-    }
-  }, []);
-
-  // 2. ЗБЕРЕЖЕННЯ
-  const handleTabChange = (id: string) => {
-    setActiveTab(id);
-    localStorage.setItem("seller_active_tab", id);
-  };
-
-  const SELLER_TABS: TabItem[] = [
-    { id: "daily", label: "Денний звіт", icon: "📝" },
-    { id: "all", label: "Склад / Архів", icon: "📦" },
-    { id: "reports", label: "Звіт тиждень", icon: "📊" },
-    { id: "revision", label: "Переоблік", icon: "⚖️" },
-  ];
-
+  // Якщо у тебе тут є якась логіка вкладок, залиш її без змін
+  
   return (
-    <AuthGuard requiredRole="seller">
-    <div className="min-h-screen bg-slate-50 pb-10">
-      <AppHeader 
-        title="FOP Manager"
-        userType="Панель Продавця"
-        tabs={SELLER_TABS}
-        activeTab={activeTab}
-        onTabChange={handleTabChange} // <--- НОВА ФУНКЦІЯ
-      />
+    // 👇 2. ОГОРАТАЄМО ВСЕ В PROVDIER
+    <InspectionProvider>
+        <div className="min-h-screen bg-slate-50 p-4 pb-20">
+            
+            {/* ШАПКА ПРОДАВЦЯ */}
+            <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 relative">
+                <div>
+                    <h1 className="text-xl font-bold text-slate-800">👋 Привіт, Продавець</h1>
+                    <p className="text-slate-500 text-xs">Гарної зміни!</p>
+                </div>
 
-      <div className="px-4 md:px-8 max-w-7xl mx-auto mt-8">
-        <div className="transition-all duration-500 ease-in-out">
-          {activeTab === "daily" && <DailyTab />}
-          {activeTab === "all" && <AllRecordsTab role="seller" />}
-          {activeTab === "reports" && <ReportsTab />}
-          {activeTab === "revision" && <RevisionTab />}
+                {/* 👇 3. Додаємо кнопку-око (щоб можна було швидко все приховати) */}
+                <div className="flex items-center gap-4">
+                     <InspectionToggle />
+                </div>
+            </div>
+
+            {/* ОСНОВНИЙ КОНТЕНТ */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 md:p-6">
+                <DailyManager />
+            </div>
+
         </div>
-      </div>
-    </div>
-    </AuthGuard>
+    </InspectionProvider>
   );
 }
