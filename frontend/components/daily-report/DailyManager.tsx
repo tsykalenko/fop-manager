@@ -36,7 +36,8 @@ export default function DailyManager() {
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/api/transactions", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+      const res = await fetch(`${apiUrl}/api/transactions`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -81,7 +82,8 @@ export default function DailyManager() {
   const handleAddNewItem = async (newItem: any) => {
     const token = localStorage.getItem("token");
     try {
-        const res = await fetch("http://localhost:8080/api/transactions", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+      const res = await fetch(`${apiUrl}/api/transactions`, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",

@@ -17,7 +17,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/api/login", {
+      // 👇 ЗМІНА: Визначаємо адресу сервера динамічно
+      // Якщо ми на Vercel — беремо з Environment Variables
+      // Якщо локально — беремо localhost
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+      const res = await fetch(`${apiUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -26,16 +31,13 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Якщо сервер повернув помилку (401 або 422)
         throw new Error(data.message || "Невірний логін або пароль");
       }
 
-      // 1. Зберігаємо токен (ключ) і дані користувача
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user_role", data.user.role);
       localStorage.setItem("user_name", data.user.name);
 
-      // 2. Маршрутизація залежно від ролі
       if (data.user.role === "admin") {
         router.push("/admin");
       } else {
@@ -43,7 +45,13 @@ export default function LoginPage() {
       }
 
     } catch (err: any) {
-      setError(err.message);
+      console.error(err); // Корисно для відладки
+      // Якщо помилка мережі (Failed to fetch)
+      if (err.message === "Failed to fetch") {
+          setError("Помилка з'єднання з сервером. Перевірте інтернет або чи запущено Ngrok.");
+      } else {
+          setError(err.message);
+      }
       setLoading(false);
     }
   };
