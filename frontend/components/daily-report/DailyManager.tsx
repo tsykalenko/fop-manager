@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 
-// 👇 Оновлені імпорти (нові назви файлів)
 import TransactionForm from "./TransactionForm";
 import TransactionsTable from "./TransactionsTable";
 import HistoryCalendar from "./HistoryCalendar";
@@ -16,25 +15,23 @@ interface Transaction {
   type: 'income' | 'expense';
   amount: string;
   expense_amount: string;
-  
-  // 👇 Виправив тип (було 'nullable|numeric')
   full_value: string | null; 
-
   writeoff_amount: string;
   payment_method: string;
   payment_status: 'paid' | 'unpaid';
   status: 'pending' | 'approved' | 'rejected';
   category: string;
   comment: string | null;
+  is_official: boolean;
 }
 
-export default function DailyManager() { // 👇 Перейменував компонент на Manager
+export default function DailyManager() {
   const [items, setItems] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // 👇 Стейт для відкриття модалки імпорту
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isInspectionMode, setIsInspectionMode] = useState(false);
 
   const loadData = async () => {
     try {
@@ -58,7 +55,28 @@ export default function DailyManager() { // 👇 Перейменував ком
 
   useEffect(() => { loadData(); }, []);
 
-  const filteredItems = items.filter(i => i.date === selectedDate);
+  const filteredItems = items.filter(i => {
+      // 1. Фільтр по даті
+      const dateMatch = i.date === selectedDate;
+      
+      // 2. Фільтр "Режим перевірки"
+      if (isInspectionMode) {
+          // Ми перевіряємо нестрого (==), щоб 1 дорівнювало true
+          // Також перевіряємо, чи це банк, про всяк випадок
+          const isOfficialFlag = i.is_official == true; 
+          
+          // Додаткова перестраховка: якщо в базі хаос, віримо тексту "Банк"
+          const isBankText = i.payment_method?.toLowerCase().includes('банк') || 
+                             i.payment_method?.toLowerCase().includes('bank') ||
+                             i.payment_method?.toLowerCase().includes('card') ||
+                             i.payment_method === '1'; // Для старих записів імпорту
+
+          return dateMatch && (isOfficialFlag || isBankText);
+      }
+
+      // Якщо режим вимкнено — показуємо все, що співпало по даті
+      return dateMatch;
+  });
 
   const handleAddNewItem = async (newItem: any) => {
     const token = localStorage.getItem("token");
@@ -86,10 +104,7 @@ export default function DailyManager() { // 👇 Перейменував ком
   return (
     <div className="flex flex-col gap-6 pb-20">
         
-        {/* ВЕРХНІЙ БЛОК: Календар + Форма */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-            
-            {/* 1. КАЛЕНДАР (Займає 4 з 12 колонок) */}
             <div className="xl:col-span-4 h-full">
                 <HistoryCalendar 
                     currentDate={selectedDate}
@@ -98,7 +113,6 @@ export default function DailyManager() { // 👇 Перейменував ком
                 />
             </div>
 
-            {/* 2. ФОРМА (Займає 8 з 12 колонок) */}
             <div className="xl:col-span-8 h-full">
                 <TransactionForm 
                     onAdd={handleAddNewItem} 
@@ -107,19 +121,29 @@ export default function DailyManager() { // 👇 Перейменував ком
             </div>
         </div>
 
-        {/* НИЖНІЙ БЛОК: Таблиця */}
         <div>
-            {/* Заголовок таблиці та кнопки */}
             <div className="flex items-center justify-between mb-4 px-2">
-                 <div>
+                 <div className="flex items-center gap-4">
                      <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                         📜 Історія операцій
                         <span className="text-slate-400 text-sm font-normal">| {selectedDate}</span>
                      </h2>
+
+                     {/* 👇 ПЕРЕМИКАЧ (У продавця) */}
+                     <label className="flex items-center gap-2 cursor-pointer bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition select-none border border-slate-200 shadow-sm">
+                        <input 
+                            type="checkbox" 
+                            className="toggle toggle-sm toggle-error" 
+                            checked={isInspectionMode}
+                            onChange={(e) => setIsInspectionMode(e.target.checked)}
+                        />
+                        <span className={`text-xs font-bold ${isInspectionMode ? "text-red-600" : "text-slate-500"}`}>
+                            {isInspectionMode ? "🛡️ РЕЖИМ ПЕРЕВІРКИ" : "👁️ Всі записи"}
+                        </span>
+                     </label>
                  </div>
                  
                  <div className="flex items-center gap-3">
-                    {/* 👇 НОВА КНОПКА ЕКСПОРТУ */}
                     <button 
                         onClick={() => exportTransactionsToExcel(filteredItems, selectedDate)}
                         className="text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm"
@@ -127,7 +151,6 @@ export default function DailyManager() { // 👇 Перейменував ком
                         📥 Експорт
                     </button>
 
-                    {/* 👇 КНОПКА ІМПОРТУ */}
                     <button 
                         onClick={() => setIsImportOpen(true)}
                         className="text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition flex items-center gap-1 border border-emerald-100"
@@ -150,7 +173,6 @@ export default function DailyManager() { // 👇 Перейменував ком
             />
         </div>
 
-        {/* 👇 МОДАЛКА ІМПОРТУ */}
         <ImportModal 
             isOpen={isImportOpen} 
             onClose={() => setIsImportOpen(false)} 

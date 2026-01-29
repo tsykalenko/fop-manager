@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CustomSelect from "./ui/SelectDropdown"; // 👈 Перевір шлях, куди ти поклав файл
+import CustomSelect from "./ui/SelectDropdown"; 
 
 interface Props {
   onAdd: (item: any) => Promise<void>;
@@ -23,7 +23,6 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
 
   const isPromo = method.includes('Бонус') || method.includes('Акція');
 
-  // ОПЦІЇ ДЛЯ СЕЛЕКТІВ
   const methodOptions = [
     { value: "Готівка", label: "💵 Готівка" },
     { value: "Банк (Термінал)", label: "💳 Банк (Термінал)" },
@@ -40,6 +39,9 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // 👇 ГОЛОВНА ЛОГІКА: Офіційно тільки якщо "Банк (Термінал)"
+    const isOfficial = method === "Банк (Термінал)";
+
     const newItem = {
       date: currentDate,
       invoice_number: title,
@@ -52,7 +54,8 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
       payment_method: method,
       payment_status: paymentStatus, 
       status: 'pending', 
-      comment: userComment 
+      comment: userComment,
+      is_official: isOfficial // 👈 Автоматично визначаємо тут
     };
 
     await onAdd(newItem);
@@ -63,7 +66,7 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 h-full flex flex-col">
-        <div className="bg-slate-50/50 px-5 py-3 border-b border-slate-100">
+        <div className="bg-slate-50/50 px-5 py-3 border-b border-slate-100 flex justify-between items-center">
             <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
                 <span className="bg-emerald-100 text-emerald-600 p-1 rounded-md text-xs">✨</span>
                 Додати запис за <span className="text-emerald-600 underline decoration-emerald-200 underline-offset-4">{currentDate.split('-').reverse().join('.')}</span>
@@ -73,7 +76,7 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
         <form onSubmit={handleSubmit} className="p-4 flex-1 flex flex-col gap-3 justify-center">
             <div className="w-full">
                 <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-1">Що продали / купили?</label>
-                <input required type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Наприклад: Кава та десерти" 
+                <input required type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Наприклад: Кава, Зарплата..." 
                 className="w-full h-[42px] bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:border-emerald-500 transition-all placeholder:font-normal placeholder:text-slate-400" />
             </div>
 
@@ -106,11 +109,10 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
                 </div>
             </div>
 
-            {/* СЕЛЕКТИ (НОВІ) */}
+            {/* СЕЛЕКТИ */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-1">Оплата / Тип</label>
-                    {/* 👇 ВИКОРИСТОВУЄМО НАШ КОМПОНЕНТ */}
                     <CustomSelect 
                         value={method} 
                         onChange={setMethod} 
@@ -119,7 +121,6 @@ export default function DailyForm({ onAdd, currentDate }: Props) {
                 </div>
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase mb-1 block ml-1">Статус</label>
-                    {/* 👇 ВИКОРИСТОВУЄМО НАШ КОМПОНЕНТ */}
                     <CustomSelect 
                         value={paymentStatus} 
                         onChange={(val) => setPaymentStatus(val as any)} 

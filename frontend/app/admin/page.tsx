@@ -58,7 +58,7 @@ export default function AdminPage() {
           {activeTab === "validation" && <StubTab />}
           {activeTab === "daily" && <DailyTab />}
           {activeTab === "analytics" && <StubTab />}
-          {activeTab === "all" && <StubTab role="admin" />}
+          {activeTab === "all" && <StubTab />}
           {activeTab === "revision" && <StubTab />}
           {activeTab === "salary" && <StubTab />}
           {activeTab === "settings" && <StubTab />}
