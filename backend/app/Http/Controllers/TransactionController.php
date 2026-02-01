@@ -10,7 +10,6 @@ class TransactionController extends Controller
     // 1. Отримати список (GET)
     public function index()
     {
-        // Сортуємо: найсвіжіші записи зверху
         return response()->json(Transaction::orderBy('created_at', 'desc')->get());
     }
 
@@ -24,16 +23,17 @@ class TransactionController extends Controller
             'status' => 'required|in:pending,approved,rejected',
             'category' => 'required|string',
             'payment_method' => 'required|string',
-            
-            // 👇 ДОДАНО: Валідація для нового поля
             'is_official' => 'boolean', 
-
             'full_value' => 'nullable|numeric',
             'payment_status' => 'required|in:paid,unpaid', 
             'comment' => 'nullable|string',
             'amount' => 'nullable|numeric',
             'expense_amount' => 'nullable|numeric',
             'writeoff_amount' => 'nullable|numeric',
+
+            // 👇 НОВІ ПОЛЯ (Додаємо дозвіл на запис)
+            'payment_date' => 'nullable|date',
+            'payer' => 'nullable|string',
         ]);
 
         $transaction = Transaction::create($validated);
@@ -54,14 +54,15 @@ class TransactionController extends Controller
             'full_value' => 'nullable|numeric',
             'writeoff_amount' => 'nullable|numeric',
             'payment_method' => 'required|string',
-            
-            // 👇 ДОДАНО: Тут теж треба дозволити оновлювати це поле
             'is_official' => 'boolean',
-
             'payment_status' => 'required|in:paid,unpaid',
             'status' => 'required|in:pending,approved,rejected',
             'category' => 'required|string',
             'comment' => 'nullable|string',
+
+            // 👇 НОВІ ПОЛЯ (Додаємо дозвіл на оновлення)
+            'payment_date' => 'nullable|date',
+            'payer' => 'nullable|string',
         ]);
 
         $transaction->update($validated);

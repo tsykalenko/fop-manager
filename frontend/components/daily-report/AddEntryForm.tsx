@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CustomSelect from "./uiDaily-report/SelectDropdown"; 
+import CustomSelect from "./ui/CategorySelect"; 
 
 interface Props {
   onAdd: (item: any) => Promise<void>;

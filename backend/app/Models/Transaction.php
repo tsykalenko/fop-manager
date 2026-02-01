@@ -23,6 +23,8 @@ class Transaction extends Model
     'status',
     'category',
     'comment',
+    'payment_date',
+    'payer'
 ];
 protected $casts = [
         'is_official' => 'boolean', // Це перетворить 0/1 на true/false

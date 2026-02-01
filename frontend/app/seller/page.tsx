@@ -1,40 +1,69 @@
 "use client";
 
-import { useState } from "react"; // Якщо використовується для стану вкладок
-import DailyManager from "@/components/daily-report/DailyManager"; 
-import Navbar from "@/components/Navbar"; // Якщо є
+import { useState, useEffect } from "react";
+import AppHeader, { TabItem } from "@/components/AppHeader";
+import AuthGuard from "@/components/AuthGuard";
+import StubTab from "@/components/StubTab"; // Заглушка для майбутніх вкладок
+import DailyTab from "@/components/daily-report/DailyReport";
 
-// 👇 1. Додаємо імпорти для "Ока"
+// 👇 1. Імпорти для "Ока"
 import { InspectionProvider } from "@/context/InspectionContext";
 import InspectionToggle from "@/components/ui/InspectionToggle";
 
 export default function SellerPage() {
-  // Якщо у тебе тут є якась логіка вкладок, залиш її без змін
-  
+  const [activeTab, setActiveTab] = useState("daily");
+
+  // ЗАВАНТАЖЕННЯ: Зберігаємо вибір вкладки
+  useEffect(() => {
+    const savedTab = localStorage.getItem("seller_active_tab");
+    if (savedTab) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  const handleTabChange = (id: string) => {
+    setActiveTab(id);
+    localStorage.setItem("seller_active_tab", id);
+  };
+
+  // 👇 Вкладки саме для ПРОДАВЦЯ (зазвичай їх менше, ніж у адміна)
+  const SELLER_TABS: TabItem[] = [
+    { id: "daily", label: "Денний звіт", icon: "📝" },
+    { id: "revision", label: "Переоблік", icon: "⚖️" }, // Додав про всяк випадок
+  ];
+
   return (
-    // 👇 2. ОГОРАТАЄМО ВСЕ В PROVDIER
-    <InspectionProvider>
-        <div className="min-h-screen bg-slate-50 p-4 pb-20">
+    <AuthGuard requiredRole="seller">
+      {/* 👇 2. Огортаємо в Провайдер "Ока" */}
+      <InspectionProvider>
+        <div className="min-h-screen bg-slate-50 pb-10">
             
-            {/* ШАПКА ПРОДАВЦЯ */}
-            <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 relative">
-                <div>
-                    <h1 className="text-xl font-bold text-slate-800">👋 Привіт, Продавець</h1>
-                    <p className="text-slate-500 text-xs">Гарної зміни!</p>
-                </div>
+          {/* Контейнер для Шапки + Кнопки */}
+          <div className="relative">
+              <AppHeader 
+                title="FOP Manager"
+                userType="Панель Продавця" // 👈 Тут пишемо Продавець
+                tabs={SELLER_TABS}
+                activeTab={activeTab}
+                onTabChange={handleTabChange} 
+              />
 
-                {/* 👇 3. Додаємо кнопку-око (щоб можна було швидко все приховати) */}
-                <div className="flex items-center gap-4">
-                     <InspectionToggle />
-                </div>
+              {/* 👇 3. Кнопка-око (Точно так само, як в Адмінці) */}
+              <div className="absolute top-6 right-6 z-50 md:top-8 md:right-8">
+                  <InspectionToggle />
+              </div>
+          </div>
+
+          <div className="px-4 md:px-8 max-w-7xl mx-auto mt-8">
+            <div className="transition-all duration-500 ease-in-out">
+              
+              {activeTab === "daily" && <DailyTab />}
+              {activeTab === "revision" && <StubTab />}
+
             </div>
-
-            {/* ОСНОВНИЙ КОНТЕНТ */}
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 md:p-6">
-                <DailyManager />
-            </div>
-
+          </div>
         </div>
-    </InspectionProvider>
+      </InspectionProvider>
+    </AuthGuard>
   );
 }
